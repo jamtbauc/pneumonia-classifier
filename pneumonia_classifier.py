@@ -3,6 +3,7 @@ import os
 from PIL import Image, ImageOps
 import random
 from sklearn.model_selection import train_test_split
+import sys
 
 from tensorflow import keras
 from keras import backend as K
@@ -11,16 +12,20 @@ from keras.layers import Dense, Dropout, Flatten, BatchNormalization
 from keras.layers import Conv2D, MaxPooling2D
 
 def load_images():
-    folder = '/home/jamtbauc/workspace/pneumonia/resized'
-
+    # create list for input images
     x_list = []
+    # create list for output labels
     y_list = []
-
-    with os.scandir(folder) as subfolders:
+    
+    # open current project directory
+    with os.scandir(os.path.join(sys.path[0], "resized")) as subfolders:
+        # folder contains two subfolders
         for sub in subfolders:
             print("Loading images from folder {}...".format(sub.name))
+            # load all files from each folder
             with os.scandir(sub) as files:
                 for file in files:
+                    # use Pillow library to convert each image to numpy array
                     image = Image.open(file.path)
                     img_data = np.asarray(image)
                     
