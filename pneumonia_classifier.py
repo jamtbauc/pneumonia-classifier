@@ -18,7 +18,7 @@ def load_images():
     y_list = []
     
     # open current project directory
-    with os.scandir(os.path.join(sys.path[0], "all")) as subfolders:
+    with os.scandir(os.path.join(sys.path[0], "images")) as subfolders:
         # folder contains two subfolders
         for sub in subfolders:
             print("Loading images from folder {}...".format(sub.name))
@@ -27,11 +27,13 @@ def load_images():
                 for file in files:
                     # use Pillow library to convert each image to numpy array
                     image = Image.open(file.path)
-                    img_data = np.asarray(image)
+                    img_resized = image.resize((128,128))
+                    img_resized_gray = ImageOps.grayscale(img_resized)
+                    img_data = np.asarray(img_resized_gray)
                     
                     x_list.append(img_data)
                     
-                    if sub.name == "normal":
+                    if sub.name == "NORMAL":
                         y_list.append(0)
                     else:
                         y_list.append(1)
@@ -47,15 +49,15 @@ def reshape_input(x_list, y_list, num_classes):
     x_data = np.asarray(x_list)
     y_data = np.asarray(y_list)
 
-    assert x_data.shape == (5856, 100, 100)
+    # define image dimensions
+    img_rows, img_cols = 128, 128
+
+    assert x_data.shape == (5856, img_rows, img_cols)
     assert y_data.shape == (5856, )
 
     # Split dataset into train, val and test datasets
     x_train, x_temp, y_train, y_temp = train_test_split(x_data, y_data, test_size=0.20, random_state=42)
     x_val, x_test, y_val, y_test = train_test_split(x_temp, y_temp, test_size=0.50, random_state=42)
-
-    # define image dimensions
-    img_rows, img_cols = 100
 
     if K.image_data_format() == 'channels_first':
         x_train = x_train.reshape(x_train.shape[0], 1, img_rows, img_cols)
@@ -86,8 +88,8 @@ def design_cnn(input_shape, num_classes):
     model = Sequential()
 
     model.add(Conv2D(filters=32,
-                    kernel_size=(3,3),
-                    strides=(2,2),
+                    kernel_size=(4,4),
+                    strides=(3,3),
                     padding="valid",
                     activation='relu',
                     input_shape=input_shape,
@@ -98,6 +100,7 @@ def design_cnn(input_shape, num_classes):
     model.add(Dropout(0.25))
 
     model.add(Conv2D(64,(3,3),(2,2),activation="relu",kernel_regularizer="l2",bias_regularizer="l2"))
+
     model.add(MaxPooling2D(pool_size=(2, 2), strides=(2,2)))
     model.add(Dropout(0.25))
 
@@ -109,7 +112,7 @@ def design_cnn(input_shape, num_classes):
 
     return model
 
-def run_cnn():
+def run_cnn(epochs, batch_size):
     #initialize number of classes
     num_classes = 2
 
@@ -120,22 +123,22 @@ def run_cnn():
     x_train, x_val, x_test, y_train, y_val, y_test, input_shape = reshape_input(x_list, y_list, 2)
 
     # design model
-    initial_model = design_cnn(input_shape, num_classes)
+    model = design_cnn(input_shape, num_classes)
 
     ### train the model
-    #model.compile(loss=keras.losses.categorical_crossentropy,  # https://keras.io/api/losses/
-    #            optimizer=keras.optimizers.SGD(),  # https://keras.io/api/optimizers/
-    #            metrics=['accuracy'])
+    model.compile(loss=keras.losses.categorical_crossentropy,
+                optimizer=keras.optimizers.SGD(),
+                metrics=['accuracy'])
 
-    #model.fit(x_train, y_train,
-     #       batch_size=batch_size,
-      #      epochs=epochs,
-       #     verbose=1,
-        #    validation_data=(x_val, y_val))
+    model.fit(x_train, y_train,
+            batch_size=batch_size,
+            epochs=epochs,
+            verbose=1,
+            validation_data=(x_val, y_val))
 
-    #score = model.evaluate(x_test, y_test, verbose=0)
+    score = model.evaluate(x_test, y_test, verbose=0)
 
-    #print('Test accuracy:', score[1])
+    print('Test accuracy:', score[1])
 
 if __name__ == "__main__":
-    run_cnn()
+    run_cnn(8,16)
